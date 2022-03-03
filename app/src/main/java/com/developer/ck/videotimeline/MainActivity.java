@@ -6,6 +6,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import android.Manifest;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
 
@@ -14,7 +15,7 @@ import java.util.ArrayList;
 import bolts.Task;
 
 public class MainActivity extends AppCompatActivity  implements ItemSelectListener {
-
+    final static int SELECT_VIDEO = 101;
     private ArrayList<String> videos = new ArrayList<>();
     RecyclerView rv;
     @Override
@@ -22,29 +23,24 @@ public class MainActivity extends AppCompatActivity  implements ItemSelectListen
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        rv = findViewById(R.id.video_list);
-        rv.setLayoutManager(new GridLayoutManager(this, 3));
+
 
         if (Android.checkPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE, 0)) {
             load();
         }
     }
 
-    @Override
     public void onSelect(String path) {
         videos.add(path);
         open();
     }
 
     private void load() {
-        Task<Object> objectTask = Android.queryRecentVideos(this, 100).continueWith((cont) -> {
-            if (cont.getResult() != null) {
-                VideoAdapter adapter = new VideoAdapter(MainActivity.this,
-                        cont.getResult(), MainActivity.this);
-                rv.setAdapter(adapter);
-            }
-            return null;
-        }, Task.UI_THREAD_EXECUTOR);
+        Intent intent = new Intent();
+        intent.setType("video/*");
+        intent.setAction(Intent.ACTION_GET_CONTENT);
+        startActivityForResult(Intent.createChooser(intent,
+                "Select Video"), SELECT_VIDEO);
     }
 
     private void open() {
@@ -62,5 +58,17 @@ public class MainActivity extends AppCompatActivity  implements ItemSelectListen
             }
         }
         super.onRequestPermissionsResult(requestCode, permissions, paramArrayOfInt);
+    }
+
+
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (resultCode == RESULT_OK) {
+            if (requestCode == SELECT_VIDEO) {
+                Uri selectedMediaUri = data.getData();
+                String path = FileUtils.getPath(this, selectedMediaUri);
+                onSelect(path);
+            }
+        }
     }
 }
